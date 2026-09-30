@@ -19,7 +19,7 @@ window.I18N = {
     // Farmer
     welcome: 'Welcome', points_balance: 'Points Balance', scan_product: 'Scan Product',
     my_rewards: 'My Rewards', points_history: 'Points History', my_account: 'My Account',
-    mobile_number: 'Mobile Number', continue: 'Continue', full_name: 'Full Name',
+    mobile_number: 'Mobile Number', country: 'Country', continue: 'Continue', full_name: 'Full Name',
     register_title: 'Create your account', register_sub: 'Enter your name to finish registration.',
     login_farmer_sub: 'Enter your mobile number to sign in or register.',
     scan_title: 'Scan Product QR', scan_hint: 'Point your camera at the QR code on the product label.',
@@ -99,6 +99,9 @@ window.I18N = {
     reauth_required: 'Re-authentication required for this export.', range_invalid: 'Invalid range.',
     generating: 'Generating…', loading_labels: 'Loading…', print_labels: 'Print labels',
     preview_labels: 'Preview labels', encode: 'Encode', scan_link: 'Scan link', raw_token: 'Raw token',
+    forgot_password: 'Forgot password?', forgot_prompt: 'Enter your email or username and we’ll send you a reset link.',
+    email_or_username: 'Email or username', send: 'Send', reset_link_sent: 'If an account exists, a reset link has been sent.',
+    email: 'Email',
   },
   ar: {
     brand: 'حَصاد',
@@ -116,7 +119,7 @@ window.I18N = {
     none_found: 'لا توجد بيانات بعد.',
     welcome: 'أهلاً', points_balance: 'رصيد النقاط', scan_product: 'مسح المنتج',
     my_rewards: 'مكافآتي', points_history: 'سجل النقاط', my_account: 'حسابي',
-    mobile_number: 'رقم الهاتف', continue: 'متابعة', full_name: 'الاسم الكامل',
+    mobile_number: 'رقم الهاتف', country: 'الدولة', continue: 'متابعة', full_name: 'الاسم الكامل',
     register_title: 'أنشئ حسابك', register_sub: 'أدخل اسمك لإكمال التسجيل.',
     login_farmer_sub: 'أدخل رقم هاتفك للدخول أو التسجيل.',
     scan_title: 'امسح رمز المنتج', scan_hint: 'وجّه الكاميرا نحو رمز QR على ملصق المنتج.',
@@ -194,5 +197,8 @@ window.I18N = {
     reauth_required: 'إعادة المصادقة مطلوبة لهذا التصدير.', range_invalid: 'نطاق غير صالح.',
     generating: 'جارٍ التوليد…', loading_labels: 'جارٍ التحميل…', print_labels: 'طباعة الملصقات',
     preview_labels: 'معاينة الملصقات', encode: 'ترميز', scan_link: 'رابط المسح', raw_token: 'الرمز الخام',
+    forgot_password: 'نسيت كلمة المرور؟', forgot_prompt: 'أدخل بريدك الإلكتروني أو اسم المستخدم وسنرسل لك رابط إعادة التعيين.',
+    email_or_username: 'البريد الإلكتروني أو اسم المستخدم', send: 'إرسال', reset_link_sent: 'إذا كان هناك حساب، فقد تم إرسال رابط إعادة التعيين.',
+    email: 'البريد الإلكتروني',
   },
 };

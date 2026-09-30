@@ -133,6 +133,11 @@ input, select, textarea { font-family: inherit; }
 .row { display: flex; gap: .75rem; flex-wrap: wrap; }
 .row > * { flex: 1; min-width: 0; }
 
+/* International phone input: country dial-code select + national number */
+.phone-row { display: flex; gap: .5rem; align-items: stretch; }
+.phone-row .cc-select { flex: 0 0 auto; width: auto; max-width: 44%; padding-inline: .6rem; }
+.phone-row .input { flex: 1 1 auto; min-width: 0; }
+
 /* ---------------------------- Tables ---------------------------- */
 .table-wrap { overflow-x: auto; border-radius: var(--r); }
 table.data { width: 100%; border-collapse: collapse; font-size: .9rem; }

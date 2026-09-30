@@ -92,6 +92,7 @@ const hmac = (value, key) =>
 const hashQrToken = (token) => hmac(String(token).toUpperCase().trim(), config.QR_HMAC_SECRET);
 const hashRedemptionToken = (token) => hmac(String(token).toUpperCase().trim(), config.REDEMPTION_HMAC_SECRET);
 const hashOtp = (phone, code) => hmac(`${phone}:${code}`, config.OTP_HMAC_SECRET);
+const hashResetToken = (token) => hmac(String(token), config.SESSION_SECRET);
 
 /* ------------------------------- Misc ------------------------------- */
 const randomId = (bytes = 16) => crypto.randomBytes(bytes).toString('hex');
@@ -162,7 +163,7 @@ function totpUri(secret, label, issuer = 'Hasad') {
 module.exports = {
   hashPassword, verifyPassword,
   qrToken, redemptionToken, redemptionCode, randomAlphabet,
-  hashQrToken, hashRedemptionToken, hashOtp, hmac,
+  hashQrToken, hashRedemptionToken, hashOtp, hashResetToken, hmac,
   encryptToken, decryptToken,
   randomId, safeEqual, tempPassword,
   generateTotpSecret, verifyTotp, totpUri,

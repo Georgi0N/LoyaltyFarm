@@ -34,6 +34,8 @@ const ask = (q, hidden = false) => new Promise((resolve) => {
 
   const existing = db.prepare('SELECT id FROM admins WHERE username=?').get(username);
   const name = (await ask('Full name: ')) || 'Super Admin';
+  const email = (await ask('Email (for password resets, optional): ')).toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { console.error('Invalid email.'); process.exit(1); }
 
   const pw1 = await ask('Password (min 10, upper+lower+digit): ', true);
   if (!isStrongPassword(pw1)) { console.error('Weak password. Need >=10 chars with upper, lower and a digit.'); process.exit(1); }
@@ -42,12 +44,12 @@ const ask = (q, hidden = false) => new Promise((resolve) => {
 
   const hash = hashPassword(pw1);
   if (existing) {
-    db.prepare(`UPDATE admins SET name=?, password_hash=?, role='SUPER_ADMIN', status='active', must_change_password=0, failed_attempts=0, locked_until=NULL WHERE id=?`)
-      .run(name, hash, existing.id);
+    db.prepare(`UPDATE admins SET name=?, email=?, password_hash=?, role='SUPER_ADMIN', status='active', must_change_password=0, failed_attempts=0, locked_until=NULL WHERE id=?`)
+      .run(name, email || null, hash, existing.id);
     console.log(`\nUpdated existing account "${username}" as active SUPER_ADMIN.\n`);
   } else {
-    db.prepare(`INSERT INTO admins (username, name, password_hash, role, status) VALUES (?,?,?, 'SUPER_ADMIN', 'active')`)
-      .run(username, name, hash);
+    db.prepare(`INSERT INTO admins (username, name, email, password_hash, role, status) VALUES (?,?,?,?, 'SUPER_ADMIN', 'active')`)
+      .run(username, name, email || null, hash);
     console.log(`\nCreated SUPER_ADMIN "${username}".\n`);
   }
   rl.close();

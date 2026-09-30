@@ -48,18 +48,19 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓ ' + m); } else { fail
   const batch = await a.post('/api/admin/batches', { skuId: sku.data.id, batchNumber: 'IRQ-JRN-' + rid, pointValue: 500 });
   ok(batch.status === 200, 'create batch');
   const gen = await a.post('/api/admin/qr/generate', { batchId: batch.data.id, count: 5 });
-  ok(gen.status === 200 && gen.data.generated === 5 && gen.data.exportFile, 'generate 5 secure QR codes + print file');
+  ok(gen.status === 200 && gen.data.generated === 5, 'generate 5 secure QR codes');
 
-  // Read the freshly generated tokens from the print file (as a label printer would).
-  const csv = fs.readFileSync(path.join(__dirname, '..', 'data', 'exports', gen.data.exportFile), 'utf8').trim().split('\n');
+  // Fetch the freshly generated tokens via the secure CSV export (as a label printer would).
+  const exp = await a.text(`/api/admin/qr/batches/${batch.data.id}/export/csv?from=1&to=5&encode=token`);
+  const csv = exp.body.trim().split(/\r?\n/);
   const header = csv[0].replace(/^﻿/, '').split(',').map((s) => s.replace(/"/g, ''));
   const tokCol = header.indexOf('token');
   const tokens = csv.slice(1).map((line) => line.split(',')[tokCol].replace(/"/g, ''));
-  ok(tokens.length === 5 && tokens.every((t) => /^[A-Z0-9]{20,}$/.test(t)), 'print file contains 5 usable high-entropy tokens');
+  ok(tokens.length === 5 && tokens.every((t) => /^[A-Z0-9]{20,}$/.test(t)), 'secure export returns 5 usable high-entropy tokens');
 
   console.log('\nFARMER EARNS & REDEEMS');
   const f = client(); await f.csrf();
-  const mobile = '07' + '7' + String(rid).padStart(8, '0').slice(0, 8);
+  const mobile = '+9647' + String(rid).padStart(8, '0').slice(0, 8);
   const otp = await f.post('/api/auth/farmer/request-otp', { mobile });
   await f.post('/api/auth/farmer/verify-otp', { mobile, code: otp.data.devCode });
   ok((await f.post('/api/auth/farmer/register', { name: 'Journey Farmer', language: 'en' })).status === 200, 'farmer registers via OTP');
@@ -79,7 +80,7 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓ ' + m); } else { fail
   await w.post('/api/auth/wholesaler', { username: 'basra', password: 'Wholesale@123' });
   const look = await w.post('/api/wholesaler/lookup', { code: redemptionToken });
   ok(look.status === 200 && !look.data.redemption.already_completed, 'wholesaler validates redemption');
-  ok(/^\d{3}\*+\d{2}$/.test(look.data.redemption.farmer_mobile), 'farmer phone is masked to the wholesaler');
+  ok(/^\+\d{3}\*+\d{2}$/.test(look.data.redemption.farmer_mobile), 'farmer phone is masked to the wholesaler');
   ok((await w.post('/api/wholesaler/confirm', { redemptionId: look.data.redemption.id })).status === 200, 'confirm gift handover');
   ok((await w.post('/api/wholesaler/lookup', { code: redemptionCode })).data.redemption.already_completed, 'code is now single-use spent');
 

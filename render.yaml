@@ -24,3 +24,8 @@ services:
         value: "20"
       - key: TRUST_PROXY
         value: "1"               # Render terminates TLS in front of the app
+      - key: ADMIN_PATH
+        value: "/admin-console"  # admin lives here (change to something unguessable)
+      - key: PARTNER_PATH
+        value: "/partner"        # wholesaler portal
+      # Optional: set ADMIN_ACCESS_CODE to require a shared code before the admin login.

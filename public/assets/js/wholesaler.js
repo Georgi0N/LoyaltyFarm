@@ -30,7 +30,7 @@
         <div class="field"><label>${T('username')}</label><input class="input input-lg" id="w-user" autocomplete="username"></div>
         <div class="field"><label>${T('password')}</label><input class="input input-lg" id="w-pass" type="password" autocomplete="current-password"></div>
         <button class="btn btn-dark btn-lg btn-block" id="w-login">${T('login')}</button>
-        <p class="muted center" style="margin-top:1rem;font-size:.8rem">baghdad · basra · mosul / Wholesale@123</p>
+        <button class="btn btn-ghost btn-block" id="w-forgot" style="margin-top:.5rem;font-size:.85rem">${T('forgot_password')}</button>
       </div>
     </div>`;
     wireLang(root, renderLogin);
@@ -45,6 +45,7 @@
       }
     }, 'loading');
     root.querySelector('#w-login').onclick = login;
+    root.querySelector('#w-forgot').onclick = () => App.forgotPasswordModal('wholesaler');
     root.querySelector('#w-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
   }
 

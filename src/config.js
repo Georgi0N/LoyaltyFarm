@@ -21,6 +21,14 @@ const DEV_DEFAULTS = {
   QR_ENC_SECRET: 'dev-qr-encryption-secret-not-for-production',
 };
 
+/** Normalise a URL path env var to a single leading slash, no trailing slash. */
+function normalizePath(v, fallback) {
+  let p = String(v || fallback).trim();
+  if (!p.startsWith('/')) p = '/' + p;
+  p = p.replace(/\/+$/, '');
+  return p || fallback;
+}
+
 function secret(name) {
   const v = process.env[name];
   if (v && v.length >= 16) return v;
@@ -38,11 +46,26 @@ const config = {
   DATABASE_URL: process.env.DATABASE_URL || '', // reserved for a future Postgres driver
   PORT: parseInt(process.env.PORT, 10) || 3000,
 
+  // ---- Portal access (each portal is reached its own way) ----
+  // Customer app is at '/'. Partners (wholesalers) at PARTNER_PATH. Admin lives at
+  // an unguessable ADMIN_PATH, optionally behind a shared ADMIN_ACCESS_CODE gate.
+  PARTNER_PATH: normalizePath(process.env.PARTNER_PATH, '/partner'),
+  ADMIN_PATH: normalizePath(process.env.ADMIN_PATH, '/admin-console'),
+  ADMIN_ACCESS_CODE: process.env.ADMIN_ACCESS_CODE || '',
+
   // Notification/OTP providers (delivery wired in src/otp.js for production).
   OTP_PROVIDER: process.env.OTP_PROVIDER || '',
   OTP_API_KEY: process.env.OTP_API_KEY || '',
   WHATSAPP_API_KEY: process.env.WHATSAPP_API_KEY || '',
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || '',
+  // Password-reset email delivery (SMTP). If unset, reset links are logged to the
+  // server console (dev) instead of emailed.
+  EMAIL_FROM: process.env.EMAIL_FROM || 'Hasad <no-reply@hasad.local>',
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT, 10) || 587,
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
 
   SESSION_SECRET: secret('SESSION_SECRET'),
   QR_HMAC_SECRET: secret('QR_HMAC_SECRET'),

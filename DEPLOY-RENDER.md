@@ -36,13 +36,27 @@ git push -u origin main
 
 That's it — no env vars to set by hand; the blueprint supplies them.
 
-## 3. Use it
+## 3. Use it — each portal has its own address
 
-- **Admin** → `/admin` — `admin / admin123` (also `manager / Manager@123`, `viewer / Viewer@123`)
-- **Wholesaler** → `/wholesaler` — `baghdad / Wholesale@123` (also `basra`, `mosul`)
-- **Farmer** → `/farmer` — enter any Iraqi mobile `07XXXXXXXXX`; the **OTP is shown
-  on screen** (demo mode), so you can log in without SMS. Scan/enter a demo QR
-  token to earn points, redeem a reward, then confirm it from the wholesaler portal.
+The three portals are **separated** and reached different ways:
+
+- **Customer (farmer) app** → `/` (the root) — pick your **country**, enter a mobile
+  number (fully international now); the **OTP is shown on screen** in demo mode, so
+  you can sign in without SMS. Scan/enter a demo QR token to earn points and redeem.
+- **Partner (wholesaler) portal** → `/partner` — `baghdad / Wholesale@123`
+  (also `basra`, `mosul`). Confirm farmer redemptions.
+- **Admin console** → **`/admin-console`** — `admin / admin123` (also
+  `manager / Manager@123`, `viewer / Viewer@123`). This path is intentionally
+  **not linked anywhere** and `/admin` returns 404. Change `ADMIN_PATH` in
+  `render.yaml` to your own unguessable slug, and optionally set `ADMIN_ACCESS_CODE`
+  (an env var) to require a shared code before the admin login even appears.
+
+**Forgot password?** The staff logins (partner + admin) have a “Forgot password?”
+link that emails a reset link. Without SMTP configured it isn't sent — the reset
+link is written to the **server logs** (Render → your service → *Logs*), so you can
+still complete a reset in the demo. To send real email, add `SMTP_HOST`, `SMTP_USER`,
+`SMTP_PASS`, `EMAIL_FROM` env vars (any provider: Gmail app-password, SendGrid,
+Resend, Mailgun, SES) — no code change needed.
 
 > First request after it's been idle takes ~30–50 s while the free instance wakes.
 

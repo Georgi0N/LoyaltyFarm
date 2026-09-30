@@ -17,7 +17,7 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 const DATA_DIR = path.join(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -26,7 +26,7 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 const TABLES = [
-  'risk_reviews', 'idempotency_keys', 'sessions', 'otp_challenges', 'audit_logs',
+  'password_resets', 'risk_reviews', 'idempotency_keys', 'sessions', 'otp_challenges', 'audit_logs',
   'points_transactions', 'redemptions', 'product_qr_codes', 'batches', 'skus',
   'products', 'rewards', 'farmers', 'wholesalers', 'admins', 'settings',
 ];
@@ -46,6 +46,7 @@ function createSchema() {
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT UNIQUE NOT NULL,
     name          TEXT NOT NULL,
+    email         TEXT,
     password_hash TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'SUPER_ADMIN',
     status        TEXT NOT NULL DEFAULT 'active',
@@ -63,6 +64,7 @@ function createSchema() {
     name          TEXT NOT NULL,
     location      TEXT,
     contact       TEXT,
+    email         TEXT,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'active',
@@ -263,6 +265,20 @@ function createSchema() {
     value      TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Email-based password reset tokens (staff: admins + wholesalers). Only the
+  -- HMAC of each token is stored; single-use, short TTL.
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    role        TEXT NOT NULL,                      -- admin | wholesaler
+    user_id     INTEGER NOT NULL,
+    token_hash  TEXT UNIQUE NOT NULL,
+    expires_at  TEXT NOT NULL,
+    used        INTEGER NOT NULL DEFAULT 0,
+    created_ip  TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_reset_user ON password_resets(role, user_id);
   `);
 }
 

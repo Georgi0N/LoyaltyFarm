@@ -336,12 +336,14 @@ router.post('/wholesalers', requirePermission('wholesalers.manage'), (req, res) 
   const name = cleanText(req.body.name, 80);
   const username = cleanText(req.body.username, 40).toLowerCase();
   const password = String(req.body.password || '');
+  const email = cleanText(req.body.email, 120).toLowerCase();
   if (!name || !/^[a-z0-9_]{3,40}$/.test(username)) return res.status(400).json({ error: 'invalid_input' });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
   if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
   const { hashPassword } = require('../crypto');
   try {
-    const info = db.prepare(`INSERT INTO wholesalers (name, location, contact, username, password_hash) VALUES (?,?,?,?,?)`)
-      .run(name, cleanText(req.body.location, 80), cleanText(req.body.contact, 40), username, hashPassword(password));
+    const info = db.prepare(`INSERT INTO wholesalers (name, location, contact, email, username, password_hash) VALUES (?,?,?,?,?,?)`)
+      .run(name, cleanText(req.body.location, 80), cleanText(req.body.contact, 40), email || null, username, hashPassword(password));
     audit({ role: 'admin', id: req.actor.id, action: 'wholesaler_create', entity: 'wholesaler', target: info.lastInsertRowid, ip: req.ip, requestId: req.requestId });
     res.json({ ok: true, id: info.lastInsertRowid });
   } catch (e) { if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: 'username_exists' }); throw e; }
@@ -482,14 +484,16 @@ router.get('/users', requirePermission('users.manage'), (req, res) => {
 router.post('/users', requirePermission('users.manage'), (req, res) => {
   const username = cleanText(req.body.username, 40).toLowerCase();
   const name = cleanText(req.body.name, 80);
+  const email = cleanText(req.body.email, 120).toLowerCase();
   const role = req.body.role;
   if (!/^[a-z0-9_.]{3,40}$/.test(username) || !name) return res.status(400).json({ error: 'invalid_input' });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
   if (!STAFF_ROLES.includes(role)) return res.status(400).json({ error: 'invalid_role' });
   const temp = tempPassword();
   try {
     const info = db.prepare(
-      `INSERT INTO admins (username, name, password_hash, role, must_change_password) VALUES (?,?,?,?,1)`
-    ).run(username, name, hashPassword(temp), role);
+      `INSERT INTO admins (username, name, email, password_hash, role, must_change_password) VALUES (?,?,?,?,?,1)`
+    ).run(username, name, email || null, hashPassword(temp), role);
     audit({ role: 'admin', id: req.actor.id, action: 'user_created', entity: 'admin', target: info.lastInsertRowid,
       detail: { username, role }, severity: 'warning', ip: req.ip, requestId: req.requestId });
     // Temp password returned ONCE to the creating admin; never stored in plaintext.

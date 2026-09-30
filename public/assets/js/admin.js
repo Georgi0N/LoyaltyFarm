@@ -33,11 +33,11 @@
   function renderLogin() {
     root.innerHTML = `<div class="admin-login"><div class="box">
       <div style="text-align:center;margin-bottom:1.4rem"><img src="/assets/img/logo.png"><h2>${T('admin_dashboard')}</h2></div>
-      <div class="field"><label>${T('username')}</label><input class="input input-lg" id="a-user" value="admin"></div>
-      <div class="field"><label>${T('password')}</label><input class="input input-lg" id="a-pass" type="password"></div>
+      <div class="field"><label>${T('username')}</label><input class="input input-lg" id="a-user" autocomplete="username"></div>
+      <div class="field"><label>${T('password')}</label><input class="input input-lg" id="a-pass" type="password" autocomplete="current-password"></div>
       <div class="field hidden" id="a-mfa-field"><label>${T('mfa_code')}</label><input class="input input-lg mono" id="a-totp" inputmode="numeric" maxlength="6" placeholder="000000"></div>
       <button class="btn btn-primary btn-lg btn-block" id="a-login">${T('login')}</button>
-      <p class="muted center" style="margin-top:1rem;font-size:.8rem">admin / admin123 · manager / Manager@123 · viewer / Viewer@123</p>
+      <button class="btn btn-ghost btn-block" id="a-forgot" style="margin-top:.5rem;font-size:.85rem">${T('forgot_password')}</button>
     </div></div>`;
     const login = async () => {
       try {
@@ -56,6 +56,7 @@
       }
     };
     root.querySelector('#a-login').onclick = login;
+    root.querySelector('#a-forgot').onclick = () => App.forgotPasswordModal('admin');
     root.querySelector('#a-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
   }
 
@@ -101,6 +102,9 @@
     const navItem = NAV.find(([k]) => k === route);
     if (navItem && !can(navItem[2])) { App.toast(T('forbidden') || 'forbidden', 'err'); return; }
     current = route;
+    // Close the mobile nav drawer when navigating.
+    const _sb = root.querySelector('#sidebar'); if (_sb) _sb.classList.remove('open');
+    const _bd = root.querySelector('#nav-backdrop'); if (_bd) _bd.classList.remove('show');
     root.querySelectorAll('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === route));
     root.querySelector('#page-title').textContent = T(route === 'audit_log' ? 'audit_log' : route);
     root.querySelector('#page-sub').textContent = route === 'dashboard' ? T('overview') : '';
@@ -391,7 +395,7 @@
       host.querySelector('#qp-enc').onchange = (e) => { encode = e.target.value; render(host); };
       host.querySelector('#qp-pager').appendChild(App.pager(total, per, from - 1, (o) => { from = o + 1; render(host); }));
       // Print opens the secure server-rendered print page in a new tab.
-      host.querySelector('#qp-print').onclick = () => window.open(`/admin/print/qr/${batchId}?from=${from}&to=${to}&cols=3&encode=${encode}`, '_blank');
+      host.querySelector('#qp-print').onclick = () => window.open(`${window.__ADMIN_BASE || ''}/print/qr/${batchId}?from=${from}&to=${to}&cols=3&encode=${encode}`, '_blank');
       host.querySelector('#qp-pdf').onclick = (e) => exportBatch(e.currentTarget, batchId, 'pdf', from, to, encode);
       host.querySelector('#qp-zip').onclick = (e) => exportBatch(e.currentTarget, batchId, 'zip', from, to, encode);
       host.querySelector('#qp-csv').onclick = (e) => exportBatch(e.currentTarget, batchId, 'csv', from, to, encode);
@@ -506,6 +510,7 @@
       { name: 'name', label: T('name'), required: true },
       { name: 'location', label: T('location') },
       { name: 'contact', label: T('contact') },
+      { name: 'email', label: T('email'), type: 'email' },
       { name: 'username', label: T('username'), required: true },
       { name: 'password', label: T('password'), type: 'password', required: true },
     ], async (v) => { await App.api('/admin/wholesalers', { method: 'POST', body: v }); navigate('wholesalers'); });
@@ -634,6 +639,7 @@
     c.querySelector('#add-user').onclick = () => formModal(T('create_user'), [
       { name: 'username', label: T('username'), required: true },
       { name: 'name', label: T('name'), required: true },
+      { name: 'email', label: T('email'), type: 'email' },
       { name: 'role', label: T('role'), type: 'select', required: true, options: roles.map((r) => [r, r]) },
     ], async (v) => { const r = await App.api('/admin/users', { method: 'POST', body: v }); navigate('users'); showTempPassword(r.tempPassword, r.username); });
   }

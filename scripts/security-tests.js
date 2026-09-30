@@ -62,7 +62,7 @@ async function admin(username, password) {
   section('OTP & ACCOUNT SECURITY');
   {
     const c = client(); await c.csrf();
-    const mobile = '07' + '9' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
+    const mobile = '+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
     const r1 = await c.post('/api/auth/farmer/request-otp', { mobile });
     ok(r1.status === 200 && r1.data.devCode, 'OTP issued for new number');
     const bad = await c.post('/api/auth/farmer/verify-otp', { mobile, code: '000000' });
@@ -77,7 +77,7 @@ async function admin(username, password) {
     ok(reg.status === 200 && reg.data.user, 'registration completes after OTP');
 
     // Enumeration: unknown vs known number look identical.
-    const enum1 = await client().post('/api/auth/farmer/request-otp', { mobile: '07' + '8' + '00000001' }).catch(() => ({}));
+    const enum1 = await client().post('/api/auth/farmer/request-otp', { mobile: '+964800000001' }).catch(() => ({}));
     const known = client(); await known.csrf();
     const enum2 = await known.post('/api/auth/farmer/request-otp', { mobile });
     ok(enum2.status === 200 && (!enum2.data.user), 'request-otp gives generic response (no enumeration)');
@@ -88,7 +88,7 @@ async function admin(username, password) {
     ok(dupThrew, 'DB UNIQUE constraint blocks duplicate phone account');
 
     // OTP brute force: capped verify attempts per challenge.
-    const bfMobile = '07' + '9' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
+    const bfMobile = '+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
     const bf = client(); await bf.csrf();
     await bf.post('/api/auth/farmer/request-otp', { mobile: bfMobile });
     let blocked = false;
@@ -98,7 +98,7 @@ async function admin(username, password) {
 
   /* ============================ FRONTEND-NEVER-TRUSTED ============================ */
   section('FRONTEND IS NEVER TRUSTED (server decides value/points)');
-  const f1 = (await farmer('07' + '7' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
+  const f1 = (await farmer('+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
   {
     const tok = nextToken();
     const before = (await f1.get('/api/farmer/dashboard')).data.farmer.points_balance;
@@ -144,7 +144,7 @@ async function admin(username, password) {
 
   /* ============================ REWARD REDEMPTION ============================ */
   section('REWARD REDEMPTION');
-  const richMobile = '07' + '7' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
+  const richMobile = '+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
   const rich = (await farmer(richMobile)).c;
   const richId = (await rich.get('/api/farmer/dashboard')).data.farmer.id;
   {
@@ -154,7 +154,7 @@ async function admin(username, password) {
     const cheap = rewards.filter((r) => r.quantity > 0).sort((a, b) => a.points_required - b.points_required)[0];
 
     // Insufficient funds path with a brand-new poor farmer.
-    const poor = (await farmer('07' + '7' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
+    const poor = (await farmer('+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
     const expensive = rewards.sort((a, b) => b.points_required - a.points_required)[0];
     const ins = await poor.post('/api/farmer/redeem', { rewardId: expensive.id });
     ok(ins.status === 409 && ins.data.error === 'insufficient', 'redeem with insufficient points rejected');
@@ -213,7 +213,7 @@ async function admin(username, password) {
   {
     // Registering with role/points/status fields must not set them.
     const c = client(); await c.csrf();
-    const m = '07' + '7' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
+    const m = '+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
     const r = await c.post('/api/auth/farmer/request-otp', { mobile: m });
     await c.post('/api/auth/farmer/verify-otp', { mobile: m, code: r.data.devCode });
     await c.post('/api/auth/farmer/register', { name: 'Greedy', points_balance: 999999, status: 'active', role: 'admin', id: 1 });
@@ -245,7 +245,7 @@ async function admin(username, password) {
     const su = await admin('admin', 'admin123');
     // Make the claim-velocity threshold tiny so we can trigger a HIGH hold deterministically.
     await su.put('/api/admin/settings', { key: 'fraud.claim_velocity', value: { window_sec: 300, count_medium: 2, count_high: 4, weight: 80 } });
-    const fv = (await farmer('07' + '7' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
+    const fv = (await farmer('+9647' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'))).c;
     let held = false, credited = 0;
     for (let i = 0; i < 6; i++) { const r = await fv.post('/api/farmer/scan', { token: nextToken() }); if (r.data.held) held = true; else if (r.data.ok) credited += r.data.points; }
     ok(held, 'rapid scanning triggers HIGH risk -> transaction HELD for review');

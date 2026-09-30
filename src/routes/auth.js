@@ -7,10 +7,12 @@ const {
   verifyPassword, hashPassword, isStrongPassword, normalizeMobile, maskMobile, cleanText,
   lockRemaining, registerLoginFailure, registerLoginSuccess,
 } = require('../security');
-const { verifyTotp } = require('../crypto');
+const { verifyTotp, hashResetToken, randomId } = require('../crypto');
 const otp = require('../otp');
 const sessions = require('../sessions');
 const { permissionsFor } = require('../rbac');
+const config = require('../config');
+const { sendMail } = require('../email');
 
 const router = express.Router();
 
@@ -168,6 +170,59 @@ router.post('/change-password', (req, res) => {
   db.prepare(`UPDATE ${table} SET password_hash=?, must_change_password=0 WHERE id=?`).run(hashPassword(next), u.id);
   sessions.revokeAllExcept(u.role, u.id, req.sessionID);
   audit({ role: u.role, id: u.id, action: 'password_changed', ip: req.ip, requestId: req.requestId });
+  res.json({ ok: true });
+});
+
+/* ------------------------------- Password reset (staff, by email) ------------------------------- */
+const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'too_many_requests' } });
+
+// Request a reset link. Always returns a generic success (no account enumeration).
+router.post('/forgot-password', resetLimiter, (req, res) => {
+  const role = req.body.role === 'admin' ? 'admin' : (req.body.role === 'wholesaler' ? 'wholesaler' : null);
+  const identifier = cleanText(req.body.identifier, 120).toLowerCase();
+  const done = () => res.json({ ok: true });
+  if (!role || !identifier) return done();
+  const table = role === 'admin' ? 'admins' : 'wholesalers';
+  const user = db.prepare(`SELECT id, name, email, username FROM ${table} WHERE lower(username)=? OR lower(email)=?`).get(identifier, identifier);
+  if (!user || !user.email) { // still audit the attempt, but reveal nothing
+    audit({ action: 'password_reset_requested', entity: role, detail: { found: false }, severity: 'warning', ip: req.ip, requestId: req.requestId });
+    return done();
+  }
+  const token = randomId(32);
+  const expires = new Date(Date.now() + 30 * 60000).toISOString().slice(0, 19).replace('T', ' ');
+  db.prepare('INSERT INTO password_resets (role, user_id, token_hash, expires_at, created_ip) VALUES (?,?,?,?,?)')
+    .run(role, user.id, hashResetToken(token), expires, req.ip);
+  const base = config.APP_URL || `${req.protocol}://${req.get('host')}`;
+  const link = `${base}/reset?token=${encodeURIComponent(token)}&role=${role}`;
+  sendMail({
+    to: user.email,
+    subject: 'Reset your Hasad password',
+    text: `Hello ${user.name},\n\nWe received a request to reset your Hasad ${role} password.\nOpen this link to choose a new password (valid for 30 minutes):\n\n${link}\n\nIf you did not request this, you can safely ignore this email.`,
+    html: `<p>Hello ${user.name},</p><p>We received a request to reset your Hasad <b>${role}</b> password.</p>
+      <p><a href="${link}" style="background:#22a65c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">Reset password</a></p>
+      <p style="color:#6b7d75;font-size:13px">This link is valid for 30 minutes. If you didn't request it, ignore this email.</p>`,
+  });
+  audit({ action: 'password_reset_requested', entity: role, target: user.id, ip: req.ip, requestId: req.requestId });
+  done();
+});
+
+// Complete a reset with the emailed token + a new password.
+router.post('/reset-password', resetLimiter, (req, res) => {
+  const token = String(req.body.token || '');
+  const next = String(req.body.next || '');
+  if (!token) return res.status(400).json({ error: 'invalid_token' });
+  if (!isStrongPassword(next)) return res.status(400).json({ error: 'weak_password' });
+  const row = db.prepare('SELECT * FROM password_resets WHERE token_hash=? AND used=0').get(hashResetToken(token));
+  if (!row) return res.status(400).json({ error: 'invalid_token' });
+  if (new Date(row.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now()) return res.status(400).json({ error: 'expired' });
+  const table = row.role === 'admin' ? 'admins' : 'wholesalers';
+  db.prepare(`UPDATE ${table} SET password_hash=?, must_change_password=0, failed_attempts=0, locked_until=NULL WHERE id=?`)
+    .run(hashPassword(next), row.user_id);
+  // Consume this and any other outstanding tokens for the user; kill their sessions.
+  db.prepare('UPDATE password_resets SET used=1 WHERE role=? AND user_id=?').run(row.role, row.user_id);
+  sessions.revokeAll(row.role, row.user_id);
+  audit({ role: row.role, id: row.user_id, action: 'password_reset_completed', severity: 'warning', ip: req.ip, requestId: req.requestId });
   res.json({ ok: true });
 });
 

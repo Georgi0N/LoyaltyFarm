@@ -4,6 +4,7 @@
  * Serves the REST API + the three static portals (farmer, wholesaler, admin).
  */
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const helmet = require('helmet');
 const session = require('express-session');
@@ -14,7 +15,7 @@ const config = require('./src/config');
 const { audit } = require('./src/db');
 const { ensureCsrf, csrfProtect } = require('./src/security');
 const sessions = require('./src/sessions');
-const { randomId } = require('./src/crypto');
+const { randomId, safeEqual } = require('./src/crypto');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -45,14 +46,19 @@ app.use(helmet({
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
       connectSrc: ["'self'"],
       mediaSrc: ["'self'", 'blob:'],
+      workerSrc: ["'self'", 'blob:'],       // camera QR scanner (html5-qrcode) worker
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
+      // Force browsers to upgrade any http subresource to https in production.
+      ...(config.IS_PROD ? { upgradeInsecureRequests: [] } : {}),
     },
   },
   crossOriginEmbedderPolicy: false,
-  hsts: config.IS_PROD ? { maxAge: 15552000, includeSubDomains: true } : false,
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  hsts: config.IS_PROD ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   frameguard: { action: 'deny' },
 }));
@@ -90,18 +96,70 @@ app.use('/api/farmer', require('./src/routes/farmer'));
 app.use('/api/wholesaler', require('./src/routes/wholesaler'));
 app.use('/api/admin', require('./src/routes/admin'));
 
-// Secure QR print page (HTML, browser-navigable, auth enforced inside the router).
-app.use('/admin/print', require('./src/routes/print'));
+// ========================= Portal serving =========================
+// Each portal is reached its own way: the customer app is at '/', partners at
+// PARTNER_PATH, and the admin console at an unguessable ADMIN_PATH (optionally
+// behind a shared access code). Only /assets is served statically, so the admin
+// HTML can never be fetched at a guessable path.
+const PUB = path.join(__dirname, 'public');
+app.use('/assets', express.static(path.join(PUB, 'assets'), { maxAge: '7d' }));
+app.get('/favicon.ico', (req, res) => res.sendFile(path.join(PUB, 'assets', 'img', 'logo.png')));
 
-// Printed QR scan URL (/c/<token>) -> farmer app deep link. Token is opaque here.
+// Printed QR scan URL (/c/<token>) -> customer app deep link. Token is opaque here.
 app.get('/c/:token', (req, res) => {
   const t = String(req.params.token || '').slice(0, 64);
-  res.redirect('/farmer?c=' + encodeURIComponent(t));
+  res.redirect('/?c=' + encodeURIComponent(t));
 });
 
-// --- Static portals ---
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// --- Customer (farmer) portal at the root ---
+const sendFarmer = (req, res) => res.sendFile(path.join(PUB, 'farmer', 'index.html'));
+app.get('/', sendFarmer);
+app.get('/app', sendFarmer);
+app.get('/farmer', (req, res) => res.redirect('/'));            // legacy path -> root
+
+// Password-reset landing (staff email links point here).
+app.get('/reset', (req, res) => res.sendFile(path.join(PUB, 'reset', 'index.html')));
+
+// --- Partner (wholesaler) portal ---
+app.get(config.PARTNER_PATH, (req, res) => res.sendFile(path.join(PUB, 'wholesaler', 'index.html')));
+app.get('/wholesaler', (req, res) => res.redirect(config.PARTNER_PATH)); // legacy path
+
+// --- Admin console: unguessable path + optional access-code gate ---
+function gatePage(msg) {
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Restricted</title><style>body{font-family:system-ui,Arial,sans-serif;background:#0a5f34;color:#fff;
+  display:grid;place-items:center;min-height:100vh;margin:0}form{background:#fff;color:#10241b;padding:2rem;border-radius:16px;
+  width:min(90vw,340px);box-shadow:0 24px 48px -18px rgba(0,0,0,.4)}h1{font-size:1.15rem;margin:0 0 1rem}
+  input{width:100%;padding:.7rem;border:1px solid #cfe0d6;border-radius:8px;margin-bottom:.8rem;box-sizing:border-box}
+  button{width:100%;padding:.7rem;border:0;border-radius:8px;background:#22a65c;color:#fff;font-weight:700;cursor:pointer}
+  p{color:#e5484d;font-size:.85rem;margin:.2rem 0 .8rem}</style>
+  <form method="post" action="${config.ADMIN_PATH}"><h1>🔒 Staff access</h1>
+  ${msg ? `<p>${msg}</p>` : ''}
+  <input type="password" name="code" placeholder="Access code" autofocus autocomplete="off">
+  <button type="submit">Continue</button></form>`;
+}
+function adminGate(req, res, next) {
+  if (!config.ADMIN_ACCESS_CODE) return next();
+  if (req.session && req.session.adminGate) return next();
+  const provided = (req.method === 'POST' ? (req.body && req.body.code) : req.query.k) || '';
+  if (provided && safeEqual(String(provided), config.ADMIN_ACCESS_CODE)) {
+    req.session.adminGate = true;
+    return req.session.save(() => res.redirect(config.ADMIN_PATH));
+  }
+  return res.status(req.method === 'POST' ? 401 : 200).send(gatePage(req.method === 'POST' ? 'Wrong code.' : ''));
+}
+function serveAdmin(req, res) {
+  // Inject the (secret) admin base path so the client builds print URLs correctly.
+  const html = fs.readFileSync(path.join(PUB, 'admin', 'index.html'), 'utf8')
+    .replace('</head>', `<script>window.__ADMIN_BASE=${JSON.stringify(config.ADMIN_PATH)};</script></head>`);
+  res.type('html').send(html);
+}
+const adminGateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
+  message: 'Too many attempts. Try again later.' });
+app.get(config.ADMIN_PATH, adminGateLimiter, adminGate, serveAdmin);
+app.post(config.ADMIN_PATH, adminGateLimiter, adminGate);
+// Secure QR print page lives under the admin path (auth enforced inside the router).
+app.use(config.ADMIN_PATH + '/print', adminGate, require('./src/routes/print'));
 
 app.use((req, res) => res.status(404).json({ error: 'not_found' }));
 

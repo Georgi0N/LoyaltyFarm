@@ -135,6 +135,25 @@
     });
   });
 
+  /* ------------------------------- Forgot password (staff, by email) ------------------------------- */
+  App.forgotPasswordModal = (role) => App.modal({
+    title: App.t('forgot_password'),
+    body: `<p class="muted" style="margin:0 0 1rem">${App.t('forgot_prompt')}</p>
+      <div class="field"><label>${App.t('email_or_username')}</label>
+        <input class="input" id="fp-id" autocomplete="username" placeholder="${App.t('email_or_username')}"></div>`,
+    footer: `<button class="btn btn-outline" data-close>${App.t('cancel')}</button>
+             <button class="btn btn-primary" id="fp-send">${App.t('send')}</button>`,
+    onOpen: (el, close) => {
+      el.querySelector('#fp-send').onclick = (e) => App.busy(e.target, async () => {
+        const identifier = el.querySelector('#fp-id').value.trim();
+        if (!identifier) return;
+        try { await App.api('/auth/forgot-password', { method: 'POST', body: { role, identifier } }); } catch (err) {}
+        close();
+        App.toast(App.t('reset_link_sent'), 'ok'); // always generic (no account enumeration)
+      }, 'saving');
+    },
+  });
+
   /* ------------------------------- Pager ------------------------------- */
   App.pager = (total, limit, offset, onPage) => {
     if (total <= limit) return document.createComment('');
@@ -199,6 +218,44 @@
     const map = { active: 'badge-ok', used: 'badge-muted', unused: 'badge-info', blocked: 'badge-danger',
       inactive: 'badge-muted', pending: 'badge-warn', completed: 'badge-ok', warning: 'badge-warn', alert: 'badge-danger' };
     return `<span class="badge ${map[status] || ''}"><span class="dot"></span>${App.t(status) !== status ? App.t(status) : status}</span>`;
+  };
+
+  /* ------------------------------- International phone ------------------------------- */
+  // Curated multi-region dial-code list (MENA-first, then major markets).
+  App.COUNTRIES = [
+    ['IQ','964','Iraq','العراق'], ['SA','966','Saudi Arabia','السعودية'], ['AE','971','UAE','الإمارات'],
+    ['KW','965','Kuwait','الكويت'], ['QA','974','Qatar','قطر'], ['BH','973','Bahrain','البحرين'],
+    ['OM','968','Oman','عُمان'], ['JO','962','Jordan','الأردن'], ['LB','961','Lebanon','لبنان'],
+    ['SY','963','Syria','سوريا'], ['PS','970','Palestine','فلسطين'], ['YE','967','Yemen','اليمن'],
+    ['EG','20','Egypt','مصر'], ['SD','249','Sudan','السودان'], ['LY','218','Libya','ليبيا'],
+    ['TN','216','Tunisia','تونس'], ['DZ','213','Algeria','الجزائر'], ['MA','212','Morocco','المغرب'],
+    ['MR','222','Mauritania','موريتانيا'], ['TR','90','Türkiye','تركيا'], ['IR','98','Iran','إيران'],
+    ['PK','92','Pakistan','باكستان'], ['IN','91','India','الهند'], ['BD','880','Bangladesh','بنغلاديش'],
+    ['AF','93','Afghanistan','أفغانستان'], ['ID','62','Indonesia','إندونيسيا'], ['MY','60','Malaysia','ماليزيا'],
+    ['NG','234','Nigeria','نيجيريا'], ['KE','254','Kenya','كينيا'], ['ZA','27','South Africa','جنوب أفريقيا'],
+    ['ET','251','Ethiopia','إثيوبيا'], ['GB','44','United Kingdom','المملكة المتحدة'], ['US','1','United States','الولايات المتحدة'],
+    ['CA','1','Canada','كندا'], ['FR','33','France','فرنسا'], ['DE','49','Germany','ألمانيا'],
+    ['IT','39','Italy','إيطاليا'], ['ES','34','Spain','إسبانيا'], ['NL','31','Netherlands','هولندا'],
+    ['SE','46','Sweden','السويد'], ['NO','47','Norway','النرويج'], ['RU','7','Russia','روسيا'],
+    ['CN','86','China','الصين'], ['JP','81','Japan','اليابان'], ['AU','61','Australia','أستراليا'],
+    ['BR','55','Brazil','البرازيل'],
+  ];
+  App.flag = (iso) => { try { return String.fromCodePoint(...[...iso].map((c) => 127397 + c.charCodeAt(0))); } catch (e) { return ''; } };
+  App.defaultCountryIso = () => localStorage.getItem('hasad_cc') || (App.lang === 'en' ? 'US' : 'IQ');
+  App.dialSelect = (id, selectedIso) => {
+    const sel = selectedIso || App.defaultCountryIso();
+    const opts = App.COUNTRIES.map(([iso, dial, en, ar]) =>
+      `<option value="${iso}" data-dial="${dial}" ${iso === sel ? 'selected' : ''}>${App.flag(iso)} ${App.lang === 'ar' ? ar : en} +${dial}</option>`).join('');
+    return `<select class="select cc-select" id="${id}" aria-label="${App.t('country')}">${opts}</select>`;
+  };
+  // Combine a selected country + national number into E.164 (+<dial><subscriber>).
+  App.composeE164 = (iso, national) => {
+    const row = App.COUNTRIES.find((c) => c[0] === iso);
+    if (!row) return null;
+    let n = String(national || '').replace(/[^\d]/g, '').replace(/^0+/, ''); // drop trunk zero(s)
+    if (!n) return null;
+    localStorage.setItem('hasad_cc', iso);
+    return '+' + row[1] + n;
   };
 
   App.initLang();

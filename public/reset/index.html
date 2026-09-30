@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reset password — Hasad</title>
+<link rel="icon" href="/assets/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/app.css">
+<style>
+  body { display: grid; place-items: center; min-height: 100dvh; background: var(--grad-dark); padding: 1.2rem; }
+  .box { background: #fff; border-radius: var(--r-lg); padding: 2rem 1.8rem; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
+  .box img { height: 44px; margin: 0 auto .8rem; }
+  .box h1 { font-size: 1.25rem; text-align: center; margin-bottom: .3rem; }
+  .box p.sub { color: var(--muted); text-align: center; font-size: .9rem; margin: 0 0 1.3rem; }
+  .msg { padding: .7rem .9rem; border-radius: 10px; font-size: .9rem; margin-bottom: 1rem; }
+  .msg.err { background: var(--danger-bg); color: var(--danger); }
+  .msg.ok { background: var(--ok-bg); color: var(--green-700); }
+</style>
+</head>
+<body>
+<div class="box">
+  <img src="/assets/img/logo.png" alt="Hasad">
+  <h1>Reset your password</h1>
+  <p class="sub">Choose a new password for your account.</p>
+  <div id="msg"></div>
+  <div id="form">
+    <div class="field"><label>New password</label>
+      <input class="input" type="password" id="pw" autocomplete="new-password" placeholder="New password">
+      <div class="hint">At least 10 characters with upper, lower and a number.</div></div>
+    <div class="field"><label>Confirm password</label>
+      <input class="input" type="password" id="pw2" autocomplete="new-password" placeholder="Confirm password"></div>
+    <button class="btn btn-primary btn-block" id="save">Update password</button>
+  </div>
+</div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var token = q.get('token') || '';
+  var role = q.get('role') === 'admin' ? 'admin' : 'wholesaler';
+  var msg = document.getElementById('msg');
+  var form = document.getElementById('form');
+  function show(t, cls) { msg.innerHTML = '<div class="msg ' + cls + '">' + t + '</div>'; }
+  if (!token) { show('This reset link is invalid or incomplete.', 'err'); form.style.display = 'none'; }
+
+  var csrf = null;
+  async function getCsrf() {
+    if (csrf) return csrf;
+    var r = await fetch('/api/csrf', { credentials: 'same-origin' });
+    csrf = (await r.json()).csrfToken; return csrf;
+  }
+  document.getElementById('save').onclick = async function (e) {
+    var btn = e.currentTarget;
+    var pw = document.getElementById('pw').value, pw2 = document.getElementById('pw2').value;
+    if (pw !== pw2) return show('Passwords do not match.', 'err');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      var res = await fetch('/api/auth/reset-password', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await getCsrf() },
+        body: JSON.stringify({ token: token, next: pw }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (res.ok) {
+        form.style.display = 'none';
+        var back = role === 'wholesaler' ? '/partner' : '/';
+        show('Password updated. You can now sign in with your new password.<br><br><a class="btn btn-outline btn-block" href="' + back + '">Go to login</a>', 'ok');
+      } else {
+        var m = { weak_password: 'Password is too weak (need 10+ chars, upper, lower, number).', expired: 'This reset link has expired. Request a new one.', invalid_token: 'This reset link is invalid or already used.' };
+        show(m[data.error] || 'Something went wrong. Please try again.', 'err');
+        btn.disabled = false; btn.textContent = 'Update password';
+      }
+    } catch (err) {
+      show('Network error. Please try again.', 'err');
+      btn.disabled = false; btn.textContent = 'Update password';
+    }
+  };
+})();
+</script>
+</body>
+</html>

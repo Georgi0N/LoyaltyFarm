@@ -22,16 +22,16 @@ const deny = (res, code, msg) => res.status(code).send(
   `<!doctype html><meta charset="utf-8"><title>${code}</title>
    <div style="font-family:system-ui;max-width:520px;margin:16vh auto;text-align:center;color:#10241b">
    <h1 style="font-size:2rem">${code}</h1><p style="color:#6b7d75">${esc(msg)}</p>
-   <a href="/admin" style="color:#0e7a43">Go to admin</a></div>`);
+   <a href="${config.ADMIN_PATH}" style="color:#0e7a43">Go to admin</a></div>`);
 
 function guard(req, res, next) {
   const u = req.session && req.session.user;
-  if (!u) return res.redirect('/admin');                 // logged out -> login
+  if (!u) return res.redirect(config.ADMIN_PATH);                 // logged out -> login
   if (u.role !== 'admin') return deny(res, 403, 'Access denied.'); // farmer/wholesaler
   const row = db.prepare('SELECT revoked FROM sessions WHERE sid=?').get(req.sessionID);
-  if (row && row.revoked) return res.redirect('/admin');
+  if (row && row.revoked) return res.redirect(config.ADMIN_PATH);
   const a = db.prepare('SELECT status, role FROM admins WHERE id=?').get(u.id);
-  if (!a || a.status !== 'active') return res.redirect('/admin');
+  if (!a || a.status !== 'active') return res.redirect(config.ADMIN_PATH);
   if (!hasPermission(a.role, 'qr.export')) return deny(res, 403, 'You do not have permission to print QR codes.');
   req._adminRole = a.role;
   next();

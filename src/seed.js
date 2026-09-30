@@ -34,12 +34,12 @@ const pick = (arr) => arr[rnd(0, arr.length - 1)];
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 19).replace('T', ' ');
 
 /* ------------------------------- Admins (roles) ------------------------------- */
-db.prepare('INSERT INTO admins (username, name, password_hash, role) VALUES (?,?,?,?)')
-  .run('admin', 'Program Administrator', hashPassword('admin123'), 'SUPER_ADMIN');
-db.prepare('INSERT INTO admins (username, name, password_hash, role) VALUES (?,?,?,?)')
-  .run('manager', 'Program Manager', hashPassword('Manager@123'), 'PROGRAM_MANAGER');
-db.prepare('INSERT INTO admins (username, name, password_hash, role) VALUES (?,?,?,?)')
-  .run('viewer', 'Report Viewer', hashPassword('Viewer@123'), 'REPORT_VIEWER');
+db.prepare('INSERT INTO admins (username, name, email, password_hash, role) VALUES (?,?,?,?,?)')
+  .run('admin', 'Program Administrator', 'admin@hasad.local', hashPassword('admin123'), 'SUPER_ADMIN');
+db.prepare('INSERT INTO admins (username, name, email, password_hash, role) VALUES (?,?,?,?,?)')
+  .run('manager', 'Program Manager', 'manager@hasad.local', hashPassword('Manager@123'), 'PROGRAM_MANAGER');
+db.prepare('INSERT INTO admins (username, name, email, password_hash, role) VALUES (?,?,?,?,?)')
+  .run('viewer', 'Report Viewer', 'viewer@hasad.local', hashPassword('Viewer@123'), 'REPORT_VIEWER');
 
 /* ------------------------------- Wholesalers ------------------------------- */
 const wholesalers = [
@@ -48,8 +48,8 @@ const wholesalers = [
   ['Mosul Green Depot', 'Mosul - Al-Majmoua', '+964 772 345 6789', 'mosul'],
 ];
 const wIds = wholesalers.map(([name, location, contact, username]) =>
-  db.prepare('INSERT INTO wholesalers (name, location, contact, username, password_hash) VALUES (?,?,?,?,?)')
-    .run(name, location, contact, username, hashPassword('Wholesale@123')).lastInsertRowid);
+  db.prepare('INSERT INTO wholesalers (name, location, contact, email, username, password_hash) VALUES (?,?,?,?,?,?)')
+    .run(name, location, contact, `${username}@hasad.local`, username, hashPassword('Wholesale@123')).lastInsertRowid);
 
 /* ------------------------------- Products + SKUs ------------------------------- */
 const productDefs = [
@@ -105,7 +105,7 @@ const setBalance = db.prepare('UPDATE farmers SET points_balance=? WHERE id=?');
 const farmerIds = [];
 for (let i = 0; i < 45; i++) {
   const name = `${pick(firstNames)} ${pick(lastNames)}`;
-  const mobile = '07' + rnd(7, 9) + String(rnd(0, 99999999)).padStart(8, '0');
+  const mobile = '+9647' + rnd(0, 9) + String(rnd(0, 99999999)).padStart(8, '0'); // E.164 (Iraq demo data)
   const regDays = rnd(1, 40);
   const lang = Math.random() < 0.6 ? 'ar' : 'en';
   let fid;

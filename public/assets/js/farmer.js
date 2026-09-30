@@ -58,8 +58,9 @@
       card = `<h2 style="font-size:1.3rem">${T('login')}</h2>
         <p class="muted" style="margin:.3rem 0 1.2rem">${T('login_farmer_sub')}</p>
         <div class="field"><label>${T('mobile_number')}</label>
-          <input class="input input-lg big-input" id="f-mobile" inputmode="tel" autocomplete="tel" dir="ltr"
-            placeholder="07XX XXX XXXX" value="${ctx.mobile||''}"></div>
+          <div class="phone-row">${App.dialSelect('f-cc', ctx.cc)}
+            <input class="input input-lg big-input" id="f-mobile" inputmode="tel" autocomplete="tel" dir="ltr"
+              placeholder="7XX XXX XXX" value="${ctx.national||''}"></div></div>
         <button class="btn btn-primary btn-lg btn-block" id="f-send">${T('send_otp')}</button>`;
     }
 
@@ -75,7 +76,7 @@
       root.querySelector('#f-verify').onclick = vf;
       otp.addEventListener('keydown', (e) => { if (e.key === 'Enter') vf(); });
       root.querySelector('#f-resend').onclick = (e) => App.busy(e.currentTarget, () => sendOtp(ctx.mobile), 'saving');
-      root.querySelector('#f-change').onclick = () => renderAuth('mobile', { mobile: ctx.mobile });
+      root.querySelector('#f-change').onclick = () => renderAuth('mobile', { cc: ctx.cc });
     } else if (step === 'register') {
       const name = root.querySelector('#f-name'); name.focus();
       root.querySelector('#f-register').onclick = (e) => {
@@ -84,17 +85,22 @@
       };
     } else {
       const m = root.querySelector('#f-mobile'); m.focus();
-      const send = (e) => App.busy(root.querySelector('#f-send'), () => sendOtp(m.value.trim()), 'saving');
+      const send = () => {
+        const iso = root.querySelector('#f-cc').value;
+        const e164 = App.composeE164(iso, m.value);
+        if (!e164) return App.toast(T('mobile_number'), 'warn');
+        App.busy(root.querySelector('#f-send'), () => sendOtp(e164, iso), 'saving');
+      };
       root.querySelector('#f-send').onclick = send;
       m.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
     }
   }
 
-  async function sendOtp(mobile) {
+  async function sendOtp(mobile, iso) {
     if (!mobile) return App.toast(T('mobile_number'), 'warn');
     try {
       const res = await App.api('/auth/farmer/request-otp', { method: 'POST', body: { mobile } });
-      renderAuth('otp', { mobile, masked: mobile, devCode: res.devCode });
+      renderAuth('otp', { mobile, masked: mobile, devCode: res.devCode, cc: iso });
     } catch (e) {
       App.toast(T(e.data && e.data.error === 'invalid_mobile' ? 'mobile_number' : 'loading'), 'err');
     }
@@ -141,9 +147,9 @@
     root.querySelectorAll('[data-nav]').forEach((b) => b.onclick = () => go(b.dataset.nav));
     go(currentView === 'scan' || currentView === 'redemptions' ? 'home' : currentView);
 
-    // Deep-link scan: /farmer?c=TOKEN
+    // Deep-link scan: /?c=TOKEN
     const q = new URLSearchParams(location.search);
-    if (q.get('c')) { history.replaceState({}, '', '/farmer'); go('scan'); setTimeout(() => submitCode(q.get('c')), 400); }
+    if (q.get('c')) { history.replaceState({}, '', '/'); go('scan'); setTimeout(() => submitCode(q.get('c')), 400); }
   }
 
   function navBtn(view, icon) {
