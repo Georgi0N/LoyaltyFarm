@@ -1,0 +1,8 @@
+node_modules/
+data/*.db
+data/*.db-*
+data/exports/
+data/demo-tokens.txt
+.env
+npm-debug.log*
+.DS_Store

@@ -1,0 +1,34 @@
+{
+  "name": "hasad-loyalty",
+  "version": "1.0.0",
+  "description": "Hasad - Digital Loyalty Program for Farmers (Iraq). Central backend + Farmer, Wholesaler and Admin portals.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node -e \"require('./src/db'); console.log('schema ready')\"",
+    "seed": "node src/seed.js",
+    "reset": "node src/seed.js --reset",
+    "create-super-admin": "node scripts/create-super-admin.js",
+    "test": "node scripts/security-tests.js",
+    "smoke": "node scripts/dom-smoke.js",
+    "print-qr": "node scripts/print-qr.js"
+  },
+  "author": "Hasad Rewards",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^18.0.4",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

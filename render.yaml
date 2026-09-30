@@ -1,0 +1,26 @@
+# Render Blueprint — deploys the original Hasad Node app on Render's free tier.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This runs the app in DEMO mode (APP_ENV=development) so it works with no SMS
+# gateway (farmer OTP codes are shown on screen) and ships demo logins. The free
+# tier sleeps when idle and its disk is EPHEMERAL, so the SQLite database is
+# re-seeded on every boot — good for a live demo, not for real data. See
+# DEPLOY-RENDER.md for how to make it durable/production later.
+services:
+  - type: web
+    name: hasad-loyalty
+    runtime: node
+    plan: free
+    region: frankfurt          # pick the closest: oregon | frankfurt | singapore | ohio | virginia
+    buildCommand: npm ci
+    # Seed demo data if the (ephemeral) DB is empty, then start the server.
+    startCommand: node src/seed.js || true; node server.js
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: development       # demo mode: OTP echoed on screen, demo admin seeded
+      - key: NODE_VERSION
+        value: "20"
+      - key: TRUST_PROXY
+        value: "1"               # Render terminates TLS in front of the app

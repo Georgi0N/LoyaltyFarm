@@ -1,0 +1,70 @@
+/* Admin dashboard layout */
+.admin-shell { display: flex; min-height: 100dvh; }
+
+/* Sidebar */
+.sidebar { width: 258px; background: var(--grad-dark); color: #fff; display: flex; flex-direction: column;
+  position: fixed; inset-block: 0; inset-inline-start: 0; z-index: 50; transition: transform .25s ease; }
+.sidebar .s-brand { display: flex; align-items: center; gap: .6rem; padding: 1.3rem 1.4rem; }
+.sidebar .s-brand img { height: 30px; } .sidebar .s-brand b { font-size: 1.15rem; }
+.sidebar nav { flex: 1; padding: .5rem .75rem; overflow-y: auto; }
+.sidebar nav a { display: flex; align-items: center; gap: .8rem; padding: .75rem .9rem; border-radius: 12px;
+  color: rgba(255,255,255,.78); font-weight: 600; font-size: .92rem; cursor: pointer; margin-bottom: 2px; transition: .15s; }
+.sidebar nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.sidebar nav a.active { background: rgba(255,255,255,.16); color: #fff; }
+.sidebar nav a svg { width: 20px; height: 20px; flex-shrink: 0; }
+.sidebar .s-foot { padding: 1rem 1.4rem; border-top: 1px solid rgba(255,255,255,.12); font-size: .78rem; color: rgba(255,255,255,.6); }
+
+/* Main */
+.main { flex: 1; margin-inline-start: 258px; display: flex; flex-direction: column; min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.6rem; background: #fff;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40; }
+.topbar h1 { font-size: 1.3rem; }
+.topbar .menu-btn { display: none; }
+.content { padding: 1.6rem; max-width: 1400px; width: 100%; }
+.page-sub { color: var(--muted); font-size: .9rem; margin: .15rem 0 0; }
+
+.section-title { display: flex; align-items: center; gap: .7rem; margin: 1.8rem 0 1rem; }
+.section-title h2 { font-size: 1.1rem; } .section-title .spacer { flex: 1; }
+
+/* Card grid for charts */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.chart-box { position: relative; height: 300px; padding: .5rem; }
+.chart-box canvas { max-height: 100%; }
+
+/* Avatar chip */
+.chip { display: inline-flex; align-items: center; gap: .5rem; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--grad); color: #fff;
+  display: grid; place-items: center; font-weight: 700; font-size: .82rem; flex-shrink: 0; }
+
+.toolbar { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.search-box { position: relative; flex: 1; max-width: 320px; }
+.search-box svg { position: absolute; inset-block-start: 50%; inset-inline-start: .7rem; transform: translateY(-50%); color: var(--muted); }
+.search-box input { padding-inline-start: 2.3rem; }
+
+.mini-list { display: grid; gap: .6rem; }
+.mini-row { display: flex; align-items: center; gap: .8rem; padding: .7rem .2rem; }
+.mini-row .bar { flex: 1; height: 8px; background: var(--line-2); border-radius: 999px; overflow: hidden; }
+.mini-row .bar > i { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+.mini-row .lbl { min-width: 130px; font-size: .88rem; font-weight: 600; }
+.mini-row .val { font-weight: 700; font-size: .9rem; min-width: 48px; text-align: end; }
+
+.logline { display: flex; gap: .8rem; padding: .7rem 0; border-bottom: 1px solid var(--line-2); font-size: .86rem; align-items: center; }
+.logline .code { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--muted); }
+
+/* Login */
+.admin-login { min-height: 100dvh; display: grid; place-items: center; background: var(--grad-dark); padding: 1.5rem; }
+.admin-login .box { background: #fff; border-radius: var(--r-lg); padding: 2.2rem 2rem; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
+.admin-login .box img { height: 46px; margin: 0 auto .6rem; } .admin-login .box h2 { text-align: center; }
+
+.backdrop-nav { display: none; }
+
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  [dir="rtl"] .sidebar { transform: translateX(100%); }
+  .sidebar.open { transform: none; }
+  .main { margin-inline-start: 0; }
+  .topbar .menu-btn { display: inline-flex; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .backdrop-nav.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 45; }
+}
+@media (max-width: 560px) { .content { padding: 1rem; } }

@@ -1,0 +1,92 @@
+================================================================
+HASAD LOYALTY PLATFORM — ACCESS & ACCOUNT SETUP
+================================================================
+This is SAFE operational documentation. It contains NO production secrets.
+Production passwords, API keys, database credentials, OTP/WhatsApp provider
+keys and HMAC/session secrets live ONLY in environment variables (.env) or a
+secret manager — never in this file and never in source control.
+
+----------------------------------------------------------------
+ACCOUNT TYPES
+----------------------------------------------------------------
+
+FARMER
+  - Logs in with a mobile number + OTP (one-time passcode). No password.
+  - First-time farmers verify the OTP, then enter their name once.
+  - In development the OTP is printed to the server console and shown on
+    screen. In production it is delivered by the configured SMS/WhatsApp
+    provider (OTP_PROVIDER / OTP_API_KEY).
+
+WHOLESALER
+  - Individual username + password account. Validates and hands over rewards.
+  - Created by an admin (Wholesalers section). Given a temporary password that
+    MUST be changed on first login.
+
+STAFF (admin console) — roles:
+  SUPER_ADMIN      full control incl. user management + settings
+  PROGRAM_MANAGER  program operations (products, batches, QR, rewards, reports…)
+  OPERATIONS       batches, QR generation, fraud reviews
+  SUPPORT          farmers, blocks, redemptions, fraud reviews
+  REPORT_VIEWER    read-only dashboard / reports / redemptions
+  (WHOLESALER is a separate account type managed in the Wholesalers section.)
+
+----------------------------------------------------------------
+DEVELOPMENT / DEMO CREDENTIALS  (DEV ONLY — created by `npm run reset`)
+----------------------------------------------------------------
+*** DO NOT USE IN PRODUCTION. Remove before go-live. ***
+
+  ADMIN (SUPER_ADMIN)      admin   / admin123
+  ADMIN (PROGRAM_MANAGER)  manager / Manager@123
+  ADMIN (REPORT_VIEWER)    viewer  / Viewer@123
+  WHOLESALER               baghdad / Wholesale@123   (also basra, mosul)
+  FARMER                   any Iraqi mobile (07XXXXXXXXX); dev OTP shown on screen
+
+Valid demo product QR tokens for testing scans are written (dev only) to:
+  data/demo-tokens.txt
+
+----------------------------------------------------------------
+FIRST PRODUCTION SUPER ADMIN (secure bootstrap)
+----------------------------------------------------------------
+Do NOT ship demo accounts to production. Create the first admin with the CLI:
+
+  npm run create-super-admin
+
+It prompts for username, name, and a password (hidden input). The password
+must meet the policy (>= 10 chars incl. upper, lower, digit) and is stored
+hashed (scrypt). Then log in at /admin and create the rest of your users.
+
+----------------------------------------------------------------
+COMMON ADMIN OPERATIONS (console → Users / Wholesalers)
+----------------------------------------------------------------
+ADD A STAFF USER
+  Users → Add User → choose a role. A one-time temporary password is shown
+  ONCE. Share it securely; the user is forced to change it at first login.
+
+ADD A WHOLESALER
+  Wholesalers → Add Wholesaler (name, location, contact, username, strong
+  password). Or set a temp password via the key icon (Reset Password).
+
+DISABLE / ARCHIVE AN ACCOUNT
+  Users → status dropdown: active / disabled / archived. Disabled & archived
+  accounts cannot log in and their sessions are revoked immediately. Records
+  are kept (soft delete) so history/audit references are preserved.
+
+RESET A PASSWORD
+  Users (or Wholesalers) → key icon. Generates a new temporary password (shown
+  once), forces a change at next login, and revokes existing sessions.
+
+CHANGE ROLE / PERMISSIONS
+  Users → role dropdown. Roles map to least-privilege permission sets.
+
+REVOKE SESSIONS ("log out a user everywhere")
+  Users (or Wholesalers) → logout icon. Any admin can also revoke ALL of their
+  OWN sessions via Settings → "Log out all devices".
+
+----------------------------------------------------------------
+SAFETY RULES ENFORCED BY THE SERVER
+----------------------------------------------------------------
+  - Only SUPER_ADMIN can manage staff users.
+  - The LAST active SUPER_ADMIN cannot be disabled, archived, or demoted
+    (prevents locking everyone out).
+  - Temporary passwords always require a change on first login.
+  - Every user/role/password/session change is written to the audit log.
